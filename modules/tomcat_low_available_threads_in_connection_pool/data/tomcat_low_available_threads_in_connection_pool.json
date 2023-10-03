@@ -1,0 +1,150 @@
+{
+  "name": "tomcat_low_available_threads_in_connection_pool",
+  "description": "This incident type is related to the Tomcat server, which is a popular open-source Java application server. It occurs when the available threads in the connection pool are running low, which means that there are not enough resources to serve incoming requests. This can cause delays or even failures in the application's performance, impacting the end-user experience. It is important to monitor and address this issue promptly to ensure that the application runs smoothly and efficiently.",
+  "params": [
+    {
+      "name": "TOMCAT_PORT",
+      "value": ""
+    },
+    {
+      "name": "NEW_MEMORY_SIZE",
+      "value": ""
+    },
+    {
+      "name": "PATH_TO_SERVER_XML_FILE",
+      "value": ""
+    },
+    {
+      "name": "PATH_TO_TOMCAT_CONFIG",
+      "value": ""
+    },
+    {
+      "name": "PATH_TO_TOMCAT_DIRECTORY",
+      "value": ""
+    },
+    {
+      "name": "CONNECTION_POOL_NAME",
+      "value": ""
+    },
+    {
+      "name": "NEW_CONNECTION_POOL_SIZE",
+      "value": ""
+    },
+    {
+      "name": "HOST_NAME",
+      "value": ""
+    },
+    {
+      "name": "K8S_CLUSTER_NAME",
+      "value": ""
+    },
+    {
+      "name": "NAMESPACE",
+      "value": ""
+    }
+  ],
+  "cells": [
+    {
+      "name": "cell_1",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Tomcat Low Available Threads in Connection Pool\nThis incident type is related to the Tomcat server, which is a popular open-source Java application server. It occurs when the available threads in the connection pool are running low, which means that there are not enough resources to serve incoming requests. This can cause delays or even failures in the application's performance, impacting the end-user experience. It is important to monitor and address this issue promptly to ensure that the application runs smoothly and efficiently."
+    },
+    {
+      "name": "cell_2",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check if Tomcat is running"
+    },
+    {
+      "name": "cell_3",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `systemctl status tomcat`"
+    },
+    {
+      "name": "cell_4",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check Tomcat logs for any errors related to connection pool"
+    },
+    {
+      "name": "cell_5",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `grep -i \"connection pool\"  /var/log/tomcat/catalina.out`"
+    },
+    {
+      "name": "cell_6",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check the current number of threads being used by Tomcat"
+    },
+    {
+      "name": "cell_7",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `jcmd $(pgrep -f catalina) Thread.print | grep -i \"http\"`"
+    },
+    {
+      "name": "cell_8",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check the maximum number of threads allowed in the connection pool"
+    },
+    {
+      "name": "cell_9",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `grep -i \"maxActive\" ${PATH_TO_TOMCAT_CONFIG}`"
+    },
+    {
+      "name": "cell_10",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check the current number of active threads in the connection pool"
+    },
+    {
+      "name": "cell_11",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `curl -s http://localhost:${TOMCAT_PORT}/manager/jolokia/read/org.apache.tomcat.jdbc:name=${CONNECTION_POOL_NAME},type=ConnectionPool/numActive | jq '.value'`"
+    },
+    {
+      "name": "cell_12",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check the current number of idle threads in the connection pool"
+    },
+    {
+      "name": "cell_13",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `curl -s http://localhost:${TOMCAT_PORT}/manager/jolokia/read/org.apache.tomcat.jdbc:name=${CONNECTION_POOL_NAME},type=ConnectionPool/numIdle | jq '.value'`"
+    },
+    {
+      "name": "cell_14",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Increase the size of the connection pool to allow for more available threads."
+    },
+    {
+      "name": "cell_15",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "host | host_name=$HOST_NAME | invoke_change_connection_pool_size($PATH_TO_SERVER_XML_FILE, $PATH_TO_TOMCAT_DIRECTORY, $NEW_CONNECTION_POOL_SIZE)"
+    },
+    {
+      "name": "cell_16",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Increase the memory allocation to the Tomcat server to allow for more threads."
+    },
+    {
+      "name": "cell_17",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "host | host_name=$HOST_NAME | invoke_stop_start_tomcat_and_increase_memory($NEW_MEMORY_SIZE)"
+    }
+  ]
+}
